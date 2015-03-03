@@ -271,7 +271,31 @@ ngx_rtmp_dash_write_playlist(ngx_rtmp_session_t *s)
     "  <Period start=\"PT0S\" id=\"dash\">\n"
 
 
-#define NGX_RTMP_DASH_MANIFEST_VIDEO                                           \
+#define NGX_RTMP_DASH_MANIFEST_VIDEO_0                                         \
+    "    <AdaptationSet\n"                                                     \
+    "        id=\"1\"\n"                                                       \
+    "        segmentAlignment=\"true\"\n"                                      \
+    "        maxWidth=\"%ui\"\n"                                               \
+    "        maxHeight=\"%ui\"\n"                                              \
+    "        maxFrameRate=\"%ui/%ui\">\n"                                      \
+    "      <Representation\n"                                                  \
+    "          id=\"%V_H264\"\n"                                               \
+    "          mimeType=\"video/mp4\"\n"                                       \
+    "          codecs=\"avc1.%02uxi%02uxi%02uxi\"\n"                           \
+    "          width=\"%ui\"\n"                                                \
+    "          height=\"%ui\"\n"                                               \
+    "          frameRate=\"%ui/%ui\"\n"                                        \
+    "          sar=\"1:1\"\n"                                                  \
+    "          startWithSAP=\"1\"\n"                                           \
+    "          bandwidth=\"%ui\">\n"                                           \
+    "        <SegmentTemplate\n"                                               \
+    "            presentationTimeOffset=\"0\"\n"                               \
+    "            timescale=\"1000\"\n"                                         \
+    "            media=\"%V%s$Time$.m4v\"\n"                                   \
+    "            initialization=\"%V%sinit.m4v\">\n"                           \
+    "          <SegmentTimeline>\n"
+
+#define NGX_RTMP_DASH_MANIFEST_VIDEO_1                                         \
     "    <AdaptationSet\n"                                                     \
     "        id=\"1\"\n"                                                       \
     "        segmentAlignment=\"true\"\n"                                      \
@@ -294,7 +318,6 @@ ngx_rtmp_dash_write_playlist(ngx_rtmp_session_t *s)
     "            media=\"%V%s$Time$.m4v\"\n"                                   \
     "            initialization=\"%V%sinit.m4v\">\n"                           \
     "          <SegmentTimeline>\n"
-
 
 #define NGX_RTMP_DASH_MANIFEST_VIDEO_FOOTER                                    \
     "          </SegmentTimeline>\n"                                           \
@@ -382,20 +405,38 @@ ngx_rtmp_dash_write_playlist(ngx_rtmp_session_t *s)
     sep = (dacf->nested ? "" : "-");
 
     if (ctx->has_video) {
-        p = ngx_slprintf(buffer, last, NGX_RTMP_DASH_MANIFEST_VIDEO,
-                         codec_ctx->width,
-                         codec_ctx->height,
-                         codec_ctx->frame_rate,
-                         &ctx->name,
-                         codec_ctx->avc_profile,
-                         codec_ctx->avc_compat,
-                         codec_ctx->avc_level,
-                         codec_ctx->width,
-                         codec_ctx->height,
-                         codec_ctx->frame_rate,
-                         (ngx_uint_t) (codec_ctx->video_data_rate * 1000),
-                         name, sep,
-                         name, sep);
+        if (abs(codec_ctx->frame_rate - 29.97) < 0.01) {
+            p = ngx_slprintf(buffer, last, NGX_RTMP_DASH_MANIFEST_VIDEO_0,
+                             codec_ctx->width,
+                             codec_ctx->height,
+                             (ngx_uint_t)30000, (ngx_uint_t)1001,
+                             &ctx->name,
+                             codec_ctx->avc_profile,
+                             codec_ctx->avc_compat,
+                             codec_ctx->avc_level,
+                             codec_ctx->width,
+                             codec_ctx->height,
+                             (ngx_uint_t)30000, (ngx_uint_t)1001,
+                             (ngx_uint_t) (codec_ctx->video_data_rate * 1000),
+                             name, sep,
+                             name, sep);
+        }
+        else {
+            p = ngx_slprintf(buffer, last, NGX_RTMP_DASH_MANIFEST_VIDEO_1,
+                             codec_ctx->width,
+                             codec_ctx->height,
+                             (ngx_uint_t)codec_ctx->frame_rate,
+                             &ctx->name,
+                             codec_ctx->avc_profile,
+                             codec_ctx->avc_compat,
+                             codec_ctx->avc_level,
+                             codec_ctx->width,
+                             codec_ctx->height,
+                             (ngx_uint_t)codec_ctx->frame_rate,
+                             (ngx_uint_t) (codec_ctx->video_data_rate * 1000),
+                             name, sep,
+                             name, sep);
+        }
 
         for (i = 0; i < ctx->nfrags; i++) {
             f = ngx_rtmp_dash_get_frag(s, i);
