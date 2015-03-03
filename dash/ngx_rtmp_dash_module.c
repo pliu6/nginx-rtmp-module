@@ -13,7 +13,8 @@ static ngx_rtmp_close_stream_pt         next_close_stream;
 static ngx_rtmp_stream_begin_pt         next_stream_begin;
 static ngx_rtmp_stream_eof_pt           next_stream_eof;
 
-
+static char * ngx_rtmp_dash_variant(ngx_conf_t *cf, ngx_command_t *cmd,
+       void *conf);
 static ngx_int_t ngx_rtmp_dash_postconfiguration(ngx_conf_t *cf);
 static void * ngx_rtmp_dash_create_app_conf(ngx_conf_t *cf);
 static char * ngx_rtmp_dash_merge_app_conf(ngx_conf_t *cf,
@@ -32,6 +33,9 @@ typedef struct {
     uint32_t                            duration;
 } ngx_rtmp_dash_frag_t;
 
+typedef struct {
+    ngx_str_t                           suffix;
+} ngx_rtmp_dash_variant_t;
 
 typedef struct {
     ngx_uint_t                          id;
@@ -69,6 +73,8 @@ typedef struct {
 
     ngx_rtmp_dash_track_t               audio;
     ngx_rtmp_dash_track_t               video;
+
+    ngx_rtmp_dash_variant_t             *var;
 } ngx_rtmp_dash_ctx_t;
 
 
@@ -87,6 +93,7 @@ typedef struct {
     ngx_uint_t                          winfrags;
     ngx_flag_t                          cleanup;
     ngx_path_t                         *slot;
+    ngx_array_t                        *variant;
 } ngx_rtmp_dash_app_conf_t;
 
 
@@ -125,6 +132,13 @@ static ngx_command_t ngx_rtmp_dash_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_RTMP_APP_CONF_OFFSET,
       offsetof(ngx_rtmp_dash_app_conf_t, cleanup),
+      NULL },
+
+    { ngx_string("dash_variant"),
+      NGX_RTMP_MAIN_CONF|NGX_RTMP_SRV_CONF|NGX_RTMP_APP_CONF|NGX_CONF_1MORE,
+      ngx_rtmp_dash_variant,
+      NGX_RTMP_APP_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("dash_nested"),
@@ -1462,6 +1476,40 @@ ngx_rtmp_dash_cleanup(void *data)
     ngx_rtmp_dash_cleanup_dir(&cleanup->path, cleanup->playlen);
 
     return cleanup->playlen / 500;
+}
+
+
+static char *
+ngx_rtmp_dash_variant(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_rtmp_dash_app_conf_t *hacf = conf;
+
+    ngx_str_t                *value;
+    ngx_rtmp_dash_variant_t  *var;
+
+    value = cf->args->elts;
+
+    if (hacf->variant == NULL) {
+        hacf->variant = ngx_array_create(cf->pool, 1,
+                                         sizeof(ngx_rtmp_dash_variant_t));
+        if (hacf->variant == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    var = ngx_array_push(hacf->variant);
+    if (var == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(var, sizeof(ngx_rtmp_dash_variant_t));
+
+    var->suffix = value[1];
+
+    if (cf->args->nelts != 2) {
+        return NGX_CONF_ERROR;
+    }
+    return NGX_CONF_OK;
 }
 
 
