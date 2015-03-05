@@ -427,6 +427,7 @@ ngx_rtmp_dash_write_variant_playlist(ngx_rtmp_session_t *s)
         }
 
         f = ngx_slprintf(f, f_last, "%s", ".mpd");
+        *f = '\0';
 
         fd2 = ngx_open_file(file_name, NGX_FILE_RDONLY,
                             NGX_FILE_OPEN, NGX_FILE_DEFAULT_ACCESS);
