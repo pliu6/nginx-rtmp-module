@@ -43,6 +43,7 @@ typedef struct {
 
 
 typedef struct {
+    unsigned                            active:1;
     ngx_str_t                           suffix;
     ngx_array_t                         args;
 } ngx_rtmp_hls_variant_t;
@@ -429,6 +430,10 @@ ngx_rtmp_hls_write_variant_playlist(ngx_rtmp_session_t *s)
     var = hacf->variant->elts;
     for (n = 0; n < hacf->variant->nelts; n++, var++)
     {
+        if (!var->active) {
+            continue;
+        }
+
         p = buffer;
         last = buffer + sizeof(buffer);
 
@@ -606,6 +611,7 @@ ngx_rtmp_hls_write_playlist(ngx_rtmp_session_t *s)
     }
 
     if (ctx->var) {
+        ctx->var->active = 1;
         return ngx_rtmp_hls_write_variant_playlist(s);
     }
 
@@ -2056,6 +2062,15 @@ ngx_rtmp_hls_stream_begin(ngx_rtmp_session_t *s, ngx_rtmp_stream_begin_t *v)
 static ngx_int_t
 ngx_rtmp_hls_stream_eof(ngx_rtmp_session_t *s, ngx_rtmp_stream_eof_t *v)
 {
+    ngx_rtmp_hls_ctx_t             *ctx;
+
+    ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_hls_module);
+
+    if (ctx->var) {
+        ctx->var->active = 0;
+        ngx_rtmp_hls_write_variant_playlist(s);
+    }
+
     ngx_rtmp_hls_flush_audio(s);
 
     ngx_rtmp_hls_close_fragment(s);
