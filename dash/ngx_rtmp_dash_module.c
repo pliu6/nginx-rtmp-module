@@ -615,9 +615,6 @@ ngx_rtmp_dash_write_playlist(ngx_rtmp_session_t *s)
         }
         else {
             p = ngx_slprintf(p, last, NGX_RTMP_DASH_MANIFEST_VIDEO_REPRESENTATION_HEADER_1,
-                             codec_ctx->width,
-                             codec_ctx->height,
-                             (ngx_uint_t)codec_ctx->frame_rate,
                              &ctx->name,
                              codec_ctx->avc_profile,
                              codec_ctx->avc_compat,
